@@ -1,31 +1,38 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
+const { URLSearchParams } = require('url');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const WORDPRESS_API_URL = 'https://treesbeyondboarders.wordpress.com/wp-json/wp/v2';
+
 app.use(cors());
 
-// Proxy for posts
-app.get('/api/posts', async (req, res) => {
-  try {
-    const wpRes = await fetch('https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/posts?page=1&per_page=10&_embed');
-    const data = await wpRes.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch WordPress posts' });
-  }
-});
+app.get('/api/:resource', async (req, res) => {
+  const { resource } = req.params;
+  const params = new URLSearchParams(req.query);
+  const fetchUrl = `${WORDPRESS_API_URL}/${resource}?${params}`;
 
-// Proxy for categories
-app.get('/api/categories', async (req, res) => {
   try {
-    const wpRes = await fetch('https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/categories');
+    const wpRes = await fetch(fetchUrl);
     const data = await wpRes.json();
-    res.json(data);
+    
+    // Forward headers from WordPress response
+    res.setHeader('Content-Type', wpRes.headers.get('content-type'));
+    
+    // Forward pagination headers
+    ['x-wp-total', 'x-wp-totalpages'].forEach(header => {
+      if (wpRes.headers.has(header)) {
+        res.setHeader(header, wpRes.headers.get(header));
+      }
+    });
+
+    res.status(wpRes.status).json(data);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch WordPress categories' });
+    console.error(err);
+    res.status(500).json({ error: `Failed to fetch WordPress resource: ${resource}` });
   }
 });
 
