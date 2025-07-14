@@ -1,11 +1,8 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Always allow CORS
 app.use(cors());
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,34 +11,36 @@ app.use((req, res, next) => {
 
 // Proxy for posts
 app.get('/api/posts', async (req, res) => {
-  const wpUrl = 'https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/posts?page=1&per_page=10&_embed';
+  const baseUrl = 'https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/posts';
+  const query = req.originalUrl.split('?')[1] || '';
+  const wpUrl = `${baseUrl}${query ? '?' + query : ''}`;
 
   try {
     const wpRes = await fetch(wpUrl);
     const data = await wpRes.json();
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Set here too
-    res.json(data);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(wpRes.status).json(data);
   } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    console.error('Fetch posts failed:', error.message);
+    res.status(500).json({ error: 'Failed to fetch WordPress posts' });
   }
 });
 
 // Proxy for categories
 app.get('/api/categories', async (req, res) => {
-  const wpUrl = 'https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/categories';
+  const baseUrl = 'https://treesbeyondboarders.wordpress.com/wp-json/wp/v2/categories';
+  const query = req.originalUrl.split('?')[1] || '';
+  const wpUrl = `${baseUrl}${query ? '?' + query : ''}`;
 
   try {
     const wpRes = await fetch(wpUrl);
     const data = await wpRes.json();
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Set here too
-    res.json(data);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(wpRes.status).json(data);
   } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    console.error('Fetch categories failed:', error.message);
+    res.status(500).json({ error: 'Failed to fetch WordPress categories' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
-});
+module.exports = app;
